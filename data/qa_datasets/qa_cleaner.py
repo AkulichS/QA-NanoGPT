@@ -9,7 +9,7 @@ class QACleaner:
     def __init__(
             self, 
             tokenizer, 
-            long_answ_ratio=0.50, 
+            long_answ_ratio=0.60, 
             min_answ_len=10,
             max_answ_len=150,
             max_cont_len=720
@@ -155,17 +155,22 @@ class QACleaner:
         df["context_len"] = df["context"].map(self._encoded_text_len)
 
         # ---- length filters ----
-        df = df[(df["answer_len"] > 2) & (df["context_len"] > 30)].copy()
+        df = df[(df["answer_len"] > 3) & (df["context_len"] > 30)].copy()
 
-        #  ---- select examples for long answers  ----
+        #  ---- assign instruction types  ----
+        df["instruction_type"] = "default"
+
+        #  ---- split to long and short answers ----
+        mask_long = df["answer_len"] > 12
+        df_long = df[mask_long].copy()
+        df = df[~mask_long].copy()
+
+        #  ---- select samples for long answers  ----
         long_n = int(self.long_answ_ratio * df.shape[0])
         long_pool = df[df["context_len"] <= self.max_answ_len]
         long_idx = long_pool.sample(
             n=min(long_n, len(long_pool)), random_state=42
         ).index
-
-        #  ---- assign instruction types  ----
-        df["instruction_type"] = "default"
         df.loc[long_idx,  "instruction_type"] = "detail"
 
         # ---- align answers to context per instruction type ----
@@ -194,6 +199,9 @@ class QACleaner:
 
         # ---- drop wrong answers ----
         df = df[df["answer"].notna()].copy()  
+
+        # ---- concat both ----
+        df = pd.concat([df_long, df], ignore_index=True)  
 
         # ---- drop too short and too long answers ----
         answer_len = df['answer'].map(self._encoded_text_len)
