@@ -16,7 +16,7 @@ class Trainer:
         grad_accum_steps=1,
         log_every=10,
         clip=1.0,
-        early_stopping=9,
+        early_stopping=20,
         min_delta = 0.0,
     ):
         self.model = model
@@ -139,7 +139,7 @@ class Trainer:
                                 "scheduler_state_dict": self.scheduler.state_dict(),
                                 "optim_step": self.optim_step,
                                 "config": {
-                                    "vocab_size": 32008,  # self.model.vocab_size,
+                                    "vocab_size": self.model.vocab_size,
                                     "d_model": 384,
                                     "n_layers": 8,
                                     "n_heads": 6,

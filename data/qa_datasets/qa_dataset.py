@@ -5,24 +5,25 @@ from torch.utils.data import Dataset
 
 # template for getting special tokens length
 TEMPLATE = """<BOS>
-<INST></INST>
-
 <CTX>
-<D1></D>
-<D2></D>
-<D3></D>
-<D4></D>
-<D5></D>
-<D6></D>
-<D7></D>
-<D8></D>
-<D9></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
+<D></D>
 </CTX>
+
+<INST></INST>
 
 <Q></Q>
 
 <ANS></ANS>
-<EOS>"""   # <SRC></SRC>
+<EOS>"""
 
 
 class QADataset(Dataset):
@@ -62,31 +63,23 @@ class QADataset(Dataset):
             length = len(doc_ids)
 
             if total_tokens + length >= max_context_tokens:
-                remain_tokens = max_context_tokens - total_tokens
-                if remain_tokens > 10:
-                    packed_docs.append(self.tokenizer.decode(doc_ids[:remain_tokens]))
+                # remain_tokens = max_context_tokens - total_tokens
+                # if remain_tokens > 10:
+                #     packed_docs.append(self.tokenizer.decode(doc_ids[:remain_tokens]))
                 break
 
             packed_docs.append(doc)
             total_tokens += length
-
-            if len(packed_docs) >= 9:
-                break
  
         random.shuffle(packed_docs)
 
-        # try:
-        #     pos_idx = packed_docs.index(pos_doc) + 1
-        # except ValueError:
-        #     pos_idx = 0
-
-        return packed_docs #, pos_idx
+        return packed_docs 
     
 
     def build_prompt(self, docs, inst, question, answer):  
         context = ''
         for i, d in enumerate(docs):
-            context += f"<D{i+1}>{d}</D>\n"
+            context += f"<D>{d}</D>\n"
 
         prompt = (
             f"<BOS>\n"
@@ -94,20 +87,11 @@ class QADataset(Dataset):
             f"{context}"
             f"</CTX>\n\n"
             f"<INST>{inst}</INST>\n\n"
-            f"<Q>{question}</Q>\n\n"
+            f"<Q>{question}</Q>\n\n"            
             f"<ANS>"
         )
 
-        # if doc_idx > 0:
-        #     src = f"D{doc_idx}"
-        # else:
-        #     src = '0'
-
-        full_text = (
-            f"{prompt}{answer}</ANS>\n"
-            # f"<SRC>{src}</SRC>\n"
-            f"<EOS>"
-        )
+        full_text = f"{prompt}{answer}</ANS>\n<EOS>"
 
         return prompt, full_text
     
@@ -163,7 +147,8 @@ class QADataset(Dataset):
         full_ids_len = len(full_ids)
 
         if full_ids_len > self.max_seq_len:
-            return None
+            print("\n\n Too long seq_len: ", full_ids_len, " index: ", idx, "\n\n")
+            return self.__getitem__(idx+1)
 
         input_ids = torch.tensor(full_ids, dtype=torch.long)
         labels = input_ids.clone()

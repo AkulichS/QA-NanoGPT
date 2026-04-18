@@ -11,18 +11,20 @@ from tokenizer import BPETokenizer
 from training import Trainer, build_optimizer, build_scheduler
 from model import NanoGPT
 
-MAX_STEPS = 2000
+MAX_STEPS = 50
 
 def main():
     # --- load dataset ---
-    with open("data/qa_datasets/qa_dataset.json", "r", encoding="utf-8") as f:
-        qa_dataset = json.load(f)
+    # with open("data/qa_datasets/qa_samples.json", "r", encoding="utf-8") as f:
+    #     qa_dataset = json.load(f)
 
-    with open("data/qa_datasets/qa_dataset_val.json", "r", encoding="utf-8") as f:
+    with open("data/qa_datasets/qa_samples_val.json", "r", encoding="utf-8") as f:
         qa_dataset_val = json.load(f)
 
     # --- tokenizer ---
     bpe_tokenizer = BPETokenizer().from_file("tokenizer/bpe_tokenizer_v2/tokenizer.json")
+
+    qa_dataset = qa_dataset_val
 
     # --- dataset ---
     train_ds = QADataset(
@@ -65,7 +67,7 @@ def main():
 
     # --- model ---
     # model = NanoGPT(bpe_tokenizer.get_vocab_size(), 384, 8, 6, 4*384, 1024).to(device)
-    checkpoint = torch.load("utils/checkpoints/ckpt_pretrained_gpt.pt")
+    checkpoint = torch.load("utils/checkpoints/best_checkpoint4.pt")   # ckpt_pretrained_gpt.pt")  best_checkpoint4.pt
     model = NanoGPT(
         checkpoint["config"]["vocab_size"],
         checkpoint["config"]["d_model"],
