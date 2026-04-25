@@ -6,12 +6,12 @@ from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from datetime import datetime
 
-from data import QADataset, qa_collate_fn
+from data.finetune.qa_dataset import QADataset, qa_collate_fn
 from tokenizer import BPETokenizer
 from training import Trainer, build_optimizer, build_scheduler
 from model import NanoGPT
 
-MAX_STEPS = 50
+MAX_STEPS = 500
 
 def main():
     # --- load dataset ---
@@ -80,7 +80,7 @@ def main():
     model.load_state_dict(checkpoint["model_state_dict"])
 
      # --- optimizer ---
-    optimizer = build_optimizer(model, lr=1e-4)
+    optimizer = build_optimizer(model, lr=3e-5)
 
     # --- scheduler ---
     scheduler = build_scheduler(optimizer, MAX_STEPS)

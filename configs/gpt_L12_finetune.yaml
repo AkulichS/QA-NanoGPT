@@ -1,0 +1,17 @@
+defaults:
+  - base: tokenizer
+  - models: gpt_L12_H8_512
+  - stages: finetune
+  - _self_
+
+model: gpt_L12_H8_512
+stage: finetune
+
+checkpoint:
+  dir: utils/checkpoints/${model}/${stage}
+  save_path: ${checkpoint.dir}/best_ckp.pt
+  resume_from: ${checkpoint.save_path}
+
+log:
+  dir: utils/logs/${model}/${stage}/tensorboard
+  name: L12

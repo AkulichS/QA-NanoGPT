@@ -1,7 +1,7 @@
 import torch
 
 
-def build_scheduler(optimizer, total_steps):
+def build_scheduler(optimizer, total_steps, eta_min_ratio=0.1):
 
     warmup_steps = int(0.01 * total_steps)
     decay_steps = total_steps - warmup_steps
@@ -13,10 +13,12 @@ def build_scheduler(optimizer, total_steps):
         total_iters=warmup_steps
     )
 
+    eta_min = optimizer.param_groups[0]['lr'] * eta_min_ratio
+
     cosine = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer,
         T_max=decay_steps,
-        eta_min=1e-5
+        eta_min=eta_min
     )
 
     return torch.optim.lr_scheduler.SequentialLR(
