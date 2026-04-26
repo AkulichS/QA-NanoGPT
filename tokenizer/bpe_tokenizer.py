@@ -7,13 +7,18 @@ from tqdm import tqdm
 class BPETokenizer:
     def __init__(
             self, 
-            save_dir: str = "bpe_tokenizer", 
+            save_dir: str | None = None, 
             vocab_size: int = 32000, 
             min_frequency: int = 2
         ):
-        self.save_dir = Path(save_dir)
-        # self.save_dir.mkdir(parents=True, exist_ok=True)
-        self.tokenizer_path = self.save_dir / "tokenizer.json"
+
+        self.save_dir = Path(save_dir) if save_dir else None
+        if self.save_dir:
+            self.save_dir.mkdir(parents=True, exist_ok=True)            
+            self.tokenizer_path = self.save_dir / "tokenizer.json"  
+        else:
+            self.tokenizer_path = None
+
         self.vocab_size = vocab_size
         self.min_frequency = min_frequency
         
@@ -29,7 +34,10 @@ class BPETokenizer:
             text_iterator(),
             vocab_size=self.vocab_size,
             min_frequency=self.min_frequency,
-            special_tokens=["<PAD>", "<BOS>", "<EOS>"],
+            special_tokens=[
+                "<PAD>", "<BOS>", "<EOS>", "<CTX>", "</CTX>", "<D>", "</D>",
+                 "<Q>", "</Q>", "<INST>", "</INST>", "<ANS>", "</ANS>"
+            ],
         )
 
         # Add post-processor  
@@ -41,14 +49,18 @@ class BPETokenizer:
             ],
         )
 
-        tokenizer.save(str(self.tokenizer_path))
-        print("Tokenizer saved!")
+        if self.tokenizer_path:
+            tokenizer.save(str(self.tokenizer_path))
+            print("Tokenizer saved!")
 
         return tokenizer
+    
 
-    def from_file(self, filename):
-        if not Path(filename).exists():
+    @staticmethod
+    def from_file(filename: str | Path):
+        filename = Path(filename)
+        if not filename.exists():
             raise FileNotFoundError(f"{filename} not found")
 
-        tokenizer = Tokenizer.from_file(filename)
+        tokenizer = Tokenizer.from_file(str(filename))
         return tokenizer

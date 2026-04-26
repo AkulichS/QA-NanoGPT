@@ -11,7 +11,7 @@ from tokenizer import BPETokenizer
 from training import Trainer, build_model, build_optimizer, build_scheduler
 
 
-@hydra.main(version_base="1.3", config_path="configs", config_name="gpt_L12_finetune")
+@hydra.main(version_base="1.3", config_path="configs", config_name="gpt_L12_pretrain")
 def main(cfg):
     
     # --- device ---
@@ -20,7 +20,7 @@ def main(cfg):
     torch.backends.cudnn.allow_tf32 = True
 
     # --- tokenizer ---
-    bpe_tokenizer = BPETokenizer().from_file(cfg.tokenizer.save_dir)
+    # bpe_tokenizer = BPETokenizer().from_file(cfg.tokenizer.save_dir)
 
     # --- dataset ---
     train_ds = LMDataset(
