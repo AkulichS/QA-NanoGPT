@@ -1,5 +1,5 @@
 defaults:
-  - base: tokenizer
+  - tokenizer: tokenizer
   - models: gpt_L12_H8_512
   - stages: finetune
   - _self_
@@ -13,5 +13,5 @@ checkpoint:
   resume_from: ${checkpoint.save_path}
 
 log:
-  dir: utils/logs/${model}/${stage}/tensorboard
+  dir: utils/log/${model}/${stage}/tensorboard
   name: L12

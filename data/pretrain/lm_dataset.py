@@ -21,6 +21,6 @@ class LMDataset(torch.utils.data.Dataset):
         start = idx * self.block_size
         end = start + self.block_size
 
-        chunk = torch.from_numpy(self.data[start:end].astype(np.int64))
+        chunk = torch.from_numpy(self.data[start:end]).long()
 
-        return {"input_ids": chunk}
+        return {"input_ids": chunk, "labels": chunk}  # shift is applied inside the model

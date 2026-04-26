@@ -1,5 +1,5 @@
 defaults:
-  - base: tokenizer
+  - tokenizer: tokenizer
   - models: gpt_L8_H6_384
   - stages: pretrain
   - _self_
@@ -13,5 +13,5 @@ checkpoint:
   resume_from: null
 
 log:
-  dir: utils/logs/${model}/${stage}/tensorboard
+  dir: utils/log/${model}/${stage}/tensorboard
   name: L8

@@ -1,1 +1,2 @@
 save_dir: tokenizer/bpe_tokenizer_v0/tokenizer.json
+vocab_size: 32000
