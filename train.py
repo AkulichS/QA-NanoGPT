@@ -25,13 +25,13 @@ def main(cfg):
     # --- dataset ---
     train_ds = LMDataset(
         path=cfg.stages.data.train_path,
-        block_size=cfg.models.model.max_seq_len,
+        block_size=cfg.models.max_seq_len,
         dtype=np.uint16
     )
 
     valid_ds = LMDataset(
         path=cfg.stages.data.valid_path,
-        block_size=cfg.models.model.max_seq_len,
+        block_size=cfg.models.max_seq_len,
         dtype=np.uint16
     )
 
@@ -56,10 +56,10 @@ def main(cfg):
     model = build_model(cfg, device)
 
      # --- optimizer ---
-    optimizer = build_optimizer(model, cfg.stages.optim.lr)
+    optimizer = build_optimizer(model, cfg.stages.optim)
 
     # --- scheduler ---
-    scheduler = build_scheduler(optimizer, cfg.stages.train.total_steps)
+    scheduler = build_scheduler(optimizer,cfg.stages.scheduler)
 
     # --- log writer ---
     run_name = cfg.log.name + "_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -74,11 +74,10 @@ def main(cfg):
         valid_loader=valid_loader,
         device=device,
         writer=writer,
-        grad_accum_steps=cfg.stages.train.grad_accum_steps,
-        early_stopping=cfg.stages.train.early_stopping,
+        cfg=cfg
     )
 
-    trainer.train(cfg.stages.train.total_steps)
+    trainer.train(cfg.stages.scheduler.total_steps)
     
 
 if __name__ == "__main__":

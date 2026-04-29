@@ -11,9 +11,11 @@ class NanoGPT(nn.Module):
         n_heads,
         d_ff,
         max_seq_len,
+        return_hidden=False
     ):
         super().__init__()
         self.vocab_size = vocab_size
+        self.return_hidden = return_hidden
         self.token_emb = nn.Embedding(self.vocab_size, d_model)
 
         self.blocks = nn.ModuleList([
@@ -33,6 +35,9 @@ class NanoGPT(nn.Module):
 
         x = self.ln_f(x)
         logits = self.lm_head(x)  # (batch, seq_len, vocab_size)
+
+        if self.return_hidden:
+            return logits, x
 
         loss = None
         shift_logits = logits[:, :-1, :].contiguous()  # (batch, seq_len, vocab_size)

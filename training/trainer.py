@@ -13,11 +13,7 @@ class Trainer:
         valid_loader,
         device,
         writer,
-        grad_accum_steps=1,
-        log_every=10,
-        clip=1.0,
-        early_stopping=20,
-        min_delta = 0.0,
+        cfg
     ):
         self.model = model
         self.optimizer = optimizer
@@ -26,11 +22,14 @@ class Trainer:
         self.valid_loader = valid_loader
         self.device = device
         self.writer = writer
-        self.grad_accum_steps = grad_accum_steps
-        self.log_every = log_every
-        self.clip = clip
-        self.early_stopping = early_stopping
-        self.min_delta = min_delta
+
+        # training behavior params from cfg
+        self.grad_accum_steps = cfg.stages.train.grad_accum_steps
+        self.log_every = cfg.stages.train.log_every
+        self.min_delta = cfg.stages.train.min_delta
+        self.early_stopping = cfg.stages.train.early_stopping
+        self.clip = cfg.stages.optim.clip
+        self.checkpoint_path = cfg.checkpoint.save_path
 
         self.no_improve_steps = 0
         self.optim_step = 0
@@ -49,21 +48,26 @@ class Trainer:
         with torch.autocast(device_type=self.device.type, dtype=self.amp_dtype):
             _, loss = self.model(input_ids, labels)
 
-        return loss
+        shift_labels = labels[:, 1:]
+        valid_tokens = (shift_labels != -100).sum().item()
+
+        return loss, valid_tokens
 
     # ------------------------
 
     def validate(self):
         self.model.eval()
-        losses = []
+        total_valid_loss = 0.0
+        total_valid_tokens = 0
 
         with torch.no_grad():
             for batch in self.valid_loader:
-                loss = self.compute_loss(batch)
-                losses.append(loss.item())
+                loss, valid_tokens = self.compute_loss(batch)
+                total_valid_loss += loss.item() * valid_tokens
+                total_valid_tokens += valid_tokens
 
         self.model.train()
-        return np.mean(losses)
+        return total_valid_loss / total_valid_tokens
 
     # ------------------------
 
@@ -72,15 +76,17 @@ class Trainer:
         self.model.train()
         self.optimizer.zero_grad(set_to_none=True)
 
-        train_losses = []
+        total_loss = 0
+        total_tokens = 0
         accum_step = 0
 
         while self.optim_step < max_steps:
 
             for batch in self.train_loader:
 
-                loss = self.compute_loss(batch)
-                train_losses.append(loss.item())
+                loss, valid_tokens = self.compute_loss(batch)
+                total_loss += loss.item() * valid_tokens
+                total_tokens += valid_tokens
 
                 # scale for grad accumulation before backward (disabled if bf16)
                 self.scaler.scale(loss / self.grad_accum_steps).backward()
@@ -105,8 +111,9 @@ class Trainer:
                     # ---- logging ----
                     if self.optim_step % self.log_every == 0:
 
-                        avg_train_loss = np.mean(train_losses)
-                        train_losses = []
+                        avg_train_loss = total_loss / total_tokens
+                        total_loss = 0
+                        total_tokens = 0
 
                         lr = self.optimizer.param_groups[0]["lr"]
 
@@ -116,21 +123,21 @@ class Trainer:
                         )
 
                         self.writer.add_scalar("train/loss", avg_train_loss, self.optim_step)
-                        self.writer.add_scalar("train/lr", lr, self.optim_step)
 
                         # ---- validation ----
-                        val_loss = self.validate()
+                        valid_loss = self.validate()
 
-                        print(f"step {self.optim_step} | valid_loss {val_loss:.4f}")
+                        print(f"step {self.optim_step} | valid_loss {valid_loss:.4f}")
 
-                        self.writer.add_scalar("valid/loss", val_loss, self.optim_step)
+                        self.writer.add_scalar("valid/loss", valid_loss, self.optim_step)
+                        self.writer.add_scalar("optim/lr", lr, self.optim_step)
                         self.writer.flush()
 
                         # ---- early stopping logic ----
-                        improved = val_loss < (self.best_loss - self.min_delta)
+                        improved = valid_loss < (self.best_loss - self.min_delta)
 
                         if improved:
-                            self.best_loss = val_loss
+                            self.best_loss = valid_loss
                             self.no_improve_steps = 0
                             # save best checkpoint
                             torch.save({
@@ -138,15 +145,7 @@ class Trainer:
                                 "optimizer_state_dict": self.optimizer.state_dict(),
                                 "scheduler_state_dict": self.scheduler.state_dict(),
                                 "optim_step": self.optim_step,
-                                "config": {
-                                    "vocab_size": self.model.vocab_size,
-                                    "d_model": 384,
-                                    "n_layers": 8,
-                                    "n_heads": 6,
-                                    "d_ff": 4*384,
-                                    "max_seq_len": 1024,
-                                },
-                            }, "./utils/checkpoints/best_checkpoint.pt")
+                            }, self.checkpoint_path)
 
                         else:
                             self.no_improve_steps += 1

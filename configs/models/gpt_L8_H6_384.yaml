@@ -1,7 +1,6 @@
-model:
-  name: gpt_L8_H6_384
-  d_model: 384
-  n_layers: 8
-  n_heads: 6
-  d_ff: 1536
-  max_seq_len: 1024
+# model:
+n_layers: 8
+n_heads: 6
+d_model: 384
+d_ff: 1536
+max_seq_len: 1024
