@@ -1,0 +1,17 @@
+defaults:
+  - tokenizer: tokenizer
+  - models: gpt_L8_H6_384
+  - stages: finetune
+  - _self_
+
+model: gpt_L8_H6_384
+stage: finetune
+
+checkpoint:
+  dir: utils/checkpoints/${model}/${stage}
+  save_path: ${checkpoint.dir}/best_ckp.pt
+  resume_from: ${checkpoint.save_path}
+
+log:
+  dir: utils/log/${model}/${stage}/tensorboard
+  name: L8

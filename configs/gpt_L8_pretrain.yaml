@@ -1,0 +1,17 @@
+defaults:
+  - tokenizer: tokenizer
+  - models: gpt_L8_H6_384
+  - stages: pretrain
+  - _self_
+
+model: gpt_L8_H6_384
+stage: pretrain
+
+checkpoint:
+  dir: utils/checkpoints/${model}/${stage}
+  save_path: ${checkpoint.dir}/best_ckp.pt
+  resume_from: null
+
+log:
+  dir: utils/log/${model}/${stage}/tensorboard
+  name: L8

@@ -1,0 +1,6 @@
+# model:
+n_layers: 12
+n_heads: 8
+d_model: 512
+d_ff: 2048
+max_seq_len: 1024

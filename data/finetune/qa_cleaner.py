@@ -10,7 +10,7 @@ class QACleaner:
             self, 
             tokenizer, 
             long_answ_ratio=0.60, 
-            min_answ_len=10,
+            min_answ_len=20,
             max_answ_len=150,
             max_cont_len=720
         ):
@@ -161,7 +161,7 @@ class QACleaner:
         df["instruction_type"] = "default"
 
         #  ---- split to long and short answers ----
-        mask_long = df["answer_len"] > 12
+        mask_long = df["answer_len"] > 30
         df_long = df[mask_long].copy()
         df = df[~mask_long].copy()
 
@@ -302,7 +302,7 @@ class QACleaner:
         self,
         context: str,
         answer: str,
-        min_len: int = 30,
+        min_tokens_len: int = 45,
     ) -> tuple[str, bool]:
         sentences, best_idx = self._find_anchor(context, answer)
         if best_idx == -1:
@@ -311,8 +311,8 @@ class QACleaner:
         up   = sentences[best_idx - 1] if best_idx > 0 else None
         down = sentences[best_idx + 1] if best_idx < len(sentences) - 1 else None
 
-        up_valid   = up   is not None and len(up)   > min_len
-        down_valid = down is not None and len(down) > min_len
+        up_valid   = up   is not None  
+        down_valid = down is not None 
 
         if not (up_valid or down_valid):
             return sentences[best_idx], True
@@ -324,6 +324,12 @@ class QACleaner:
                 (down, down_valid)           # down sentence
             ] if valid
         ]
-        return " ".join(parts), False
+
+        result = " ".join(parts)
+
+        if self._encoded_text_len(result) > min_tokens_len:
+            return result, False
+        else:
+            return sentences[best_idx], True
 
   

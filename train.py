@@ -1,32 +1,84 @@
+import json
 import torch
-from ..model.gpt import NanoGPT
-from ..tokenization.bpe_tokenizer import BPETokenizer
-from ..training.trainer import Trainer
-from ..training.optimizer import build_optimizer
-from ..training.scheduler import build_scheduler
+import hydra
+import numpy as np
+from torch.utils.data import DataLoader
+from torch.utils.tensorboard import SummaryWriter
+from datetime import datetime
+
+from data.pretrain.lm_dataset import LMDataset
+from tokenizer import BPETokenizer
+from training import Trainer, build_model, build_optimizer, build_scheduler
 
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-torch.backends.cuda.matmul.allow_tf32 = True
-torch.backends.cudnn.allow_tf32 = True
+@hydra.main(version_base="1.3", config_path="configs", config_name="gpt_L12_pretrain")
+def main(cfg):
+    
+    # --- device ---
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    torch.backends.cuda.matmul.allow_tf32 = True
+    torch.backends.cudnn.allow_tf32 = True
 
-bpe_tokenizer = BPETokenizer().from_file("../tokenization/bpe_tokenizer_v3/tokenizer.json")
+    # --- tokenizer ---
+    # bpe_tokenizer = BPETokenizer().from_file(cfg.tokenizer.save_dir)
 
-model = NanoGPT(bpe_tokenizer.get_vocab_size(), 384, 8, 6, 4*384, 1024).to(device)
+    # --- dataset ---
+    train_ds = LMDataset(
+        path=cfg.stages.data.train_path,
+        block_size=cfg.models.max_seq_len,
+        dtype=np.uint16
+    )
 
-optimizer = build_optimizer(model)
-scheduler = build_scheduler(optimizer, total_steps)
+    valid_ds = LMDataset(
+        path=cfg.stages.data.valid_path,
+        block_size=cfg.models.max_seq_len,
+        dtype=np.uint16
+    )
 
-trainer = Trainer(
-    model=model,
-    optimizer=optimizer,
-    scheduler=scheduler,
-    train_loader=train_loader,
-    valid_loader=valid_loader,
-    device=device,
-    writer=writer,
-    grad_accum_steps=16,
-    task="lm"
-)
+    # --- dataloader ---
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=cfg.stages.train.batch_size,
+        shuffle=True,
+        num_workers=0,
+        pin_memory=False
+    )
 
-trainer.train(NUM_EPOCHS)
+    valid_loader = DataLoader(
+        valid_ds,
+        batch_size=cfg.stages.train.batch_size,
+        shuffle=True,
+        num_workers=0,
+        pin_memory=False
+    )
+
+    # --- model ---
+    model = build_model(cfg, device)
+
+     # --- optimizer ---
+    optimizer = build_optimizer(model, cfg.stages.optim)
+
+    # --- scheduler ---
+    scheduler = build_scheduler(optimizer,cfg.stages.scheduler)
+
+    # --- log writer ---
+    run_name = cfg.log.name + "_" + datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    writer = SummaryWriter(log_dir=f"{cfg.log.dir}/{run_name}")
+
+    # --- training ---
+    trainer = Trainer(
+        model=model,
+        optimizer=optimizer,
+        scheduler=scheduler,
+        train_loader=train_loader,
+        valid_loader=valid_loader,
+        device=device,
+        writer=writer,
+        cfg=cfg
+    )
+
+    trainer.train(cfg.stages.scheduler.total_steps)
+    
+
+if __name__ == "__main__":
+    main()
